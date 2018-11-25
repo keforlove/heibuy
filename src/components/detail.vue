@@ -13,7 +13,9 @@
                 <div class="wrap-box">
                     <div class="left-925">
                         <div class="goods-box clearfix">
-                            <div class="pic-box"></div>
+                            <div class="pic-box" v-if="images.normal_size.length != 0">
+                                <ProductZoomer :base-images="images" :base-zoomer-options="zoomerOptions"/>
+                            </div>
                             <div class="goods-spec">
                                 <h1>{{goodsinfo.title}}</h1>
                                 <p class="subtitle">{{goodsinfo.sub_title}}</p>
@@ -52,7 +54,7 @@
                                         <dd>
                                             <div id="buyButton" class="btn-buy">
                                                 <button onclick="cartAdd(this,'/',1,'/shopping.html');" class="buy">立即购买</button>
-                                                <button onclick="cartAdd(this,'/',0,'/cart.html');" class="add">加入购物车</button>
+                                                <button @click="add2Cart" class="add">加入购物车</button>
                                             </div>
                                         </dd>
                                     </dl>
@@ -82,11 +84,11 @@
                                         </div>
                                         <div class="conn-box">
                                             <div class="editor">
-                                                <textarea id="txtContent" name="txtContent" sucmsg=" " datatype="*10-1000" nullmsg="请填写评论内容！"></textarea>
+                                                <textarea v-model.trim="comment" id="txtContent" name="txtContent" sucmsg=" " datatype="*10-1000" nullmsg="请填写评论内容！"></textarea>
                                                 <span class="Validform_checktip"></span>
                                             </div>
                                             <div class="subcon">
-                                                <input id="btnSubmit" name="submit" type="submit" value="提交评论" class="submit">
+                                                <input id="btnSubmit" name="submit" type="submit" value="提交评论" class="submit" @click="subComment">
                                                 <span class="Validform_checktip"></span>
                                             </div>
                                         </div>
@@ -107,7 +109,7 @@
                                         </li>
                                     </ul>
                                     <div class="page-box" style="margin: 5px 0px 0px 62px;">
-                                        <Page :total="totalcount" show-sizer placement="top" :page-size-opts="[6,8,12]" :page-size="6" show-elevator @on-change="changPage"/>
+                                        <Page :current="pageIndex" :total="totalcount" show-sizer placement="top" :page-size-opts="[6,8,12]" :page-size="6" show-elevator @on-change="changPage" @on-page-size-change="changSize"/>
                                     </div>
                                 </div>
                             </div>
@@ -158,8 +160,22 @@ export default {
             pageIndex: 1,
             pageSize: 6,
             comments:[],
-            totalcount: ''
-        }
+            totalcount: '',
+            comment:'',
+            images:
+                    {                                               
+                normal_size: [ ]                                                                     
+                     }, 
+            zoomerOptions: {
+                zoomFactor: 16,
+                pane: 'container-round',
+                hoverDelay: 300,
+                namespace: 'inline-zoomer',
+                move_by_click:true,
+                scroll_items: 5,
+                choosed_thumb_border_color: "#bbdefb"
+            }        
+        }  
     },
     methods: {
         handleChange(){
@@ -169,18 +185,25 @@ export default {
             /* 初始化计数器里的数字 */
             this.buyCount = 1
             this.artID = this.$route.params.id;
+            this.images.normal_size = [];
             this.$axios.get('http://111.230.232.110:8899/site/goods/getgoodsinfo/'+this.artID)
             .then(res=>{
             //console.log(res)
             this.goodsinfo = res.data.message.goodsinfo;
             this.hotgoodslist = res.data.message.hotgoodslist;
             this.imglist = res.data.message.imglist
+            this.imglist.forEach(v=>{
+                this.images.normal_size.push({
+                    id:v.id,
+                    url:v.thumb_path
+                })
+            })
         })
         },
         /* 获取评论数据 */
         getComments(){
             this.$axios.get(`http://111.230.232.110:8899/site/comment/getbypage/goods/${this.artID}?pageIndex=${this.pageIndex}&pageSize=${this.pageSize}`).then(res=>{
-                console.log(res);
+                //console.log(res);
                 this.comments = res.data.message;
                 this.totalcount = res.data.totalcount;
             })
@@ -188,6 +211,33 @@ export default {
         changPage(pageIndex){
             this.pageIndex = pageIndex;
             this.getComments();
+        },
+        changSize(pageSize){
+            this.pageSize = pageSize;
+            this.getComments();
+        },
+        subComment(){
+            //console.log('11')
+            if(this.comment == ""){
+                this.$Message.warning('请输入内容')
+            }
+            this.$axios.post(`site/validate/comment/post/goods/${this.artID}`,{"commenttxt":this.comment})
+            .then(res=>{
+                console.log(res)
+                if(res.data.status == 0){
+                    this.$Message.success(res.data.message)
+                    this.comment = ""
+                    this.pageIndex = 1
+                    this.getComments();
+                }
+                
+            })
+        },
+        add2Cart(){
+            this.$store.commit('add2Cart',{
+                goodId:this.artID,
+                goodNum:this.buyCount
+            })
         }
 
     },
@@ -216,5 +266,12 @@ export default {
         display: block;
         max-width: 100%;
     }
+    .pic-box{
+        width: 395px;
+    }
+    .thumb-list img{
+    width: 100px;
+    height: 100px;
+}
 
 </style>
