@@ -22,6 +22,7 @@ Vue.config.productionTip = false
 import axios from 'axios';
 /* 挂载到Vue原型上 */
 Vue.prototype.$axios = axios;
+axios.defaults.withCredentials=true;//让ajax携带cookie
 /* 绑定基地址 */
 axios.defaults.baseURL = 'http://111.230.232.110:8899/';
 
@@ -32,13 +33,17 @@ Vue.use(ProductZoomer)
 /* 导入单文件组件 */
 import index from './components/index.vue';
 import detail from './components/detail.vue';
-import shopCart from './components/shopCart.vue'
+import shopCart from './components/shopCart.vue';
+import order from './components/order.vue';
+import login from './components/login.vue';
 
 let routes = [
   {path: '/', redirect:'/index'},
   {path: '/index',component:index},
   {path: '/detail/:id',component:detail},
-  {path: '/shopCart',component:shopCart}
+  {path: '/shopCart',component:shopCart},
+  {path: '/order/:ids',component:order},
+  {path: '/login/',component:login}
 ]
 
 /* 实例化router */
@@ -61,7 +66,8 @@ Vue.use(Vuex)
 
 const store = new Vuex.Store({
   state: {
-    cartData: JSON.parse(window.localStorage.getItem('hm24')) || {90:5,91:6} 
+    cartData: JSON.parse(window.localStorage.getItem('hm24')) || {90:5,91:6} ,
+    isLogin: false
   },
   mutations: {
     add2Cart (state,obj) {
@@ -77,6 +83,18 @@ const store = new Vuex.Store({
         Vue.set(state.cartData,obj.goodId,obj.goodNum)
       }
       //console.log(state);
+    },
+    updateCart(state,obj){
+      //console.log(obj)
+      state.cartData[obj.id] = obj.newCount
+      //state.cartData = obj
+    },
+    delOneById(state,id){
+      //delete state.cartData[id]
+      Vue.delete(state.cartData,id)
+    },
+    changeLoginState(state,loginState){
+      state.isLogin = loginState
     }
   },
   getters: {
@@ -95,9 +113,39 @@ const store = new Vuex.Store({
   window.localStorage.setItem('hm24',JSON.stringify(store.state.cartData))
  }
 
+/* 导航守卫 */
+router.beforeEach((to, from, next) => {
+  //console.log('触发了');
+  if(to.path.indexOf('/order') != -1 ){
+    axios.get('site/account/islogin').then(res=>{
+      //console.log(res);
+      if(res.data.code == "nologin"){
+          
+          Vue.prototype.$Message.warning('请先登录')
+          router.push('/login')
+      }else{
+        next()
+      }
+  })
+  }else{
+    next()
+  }
+})
+
+
 /* 实例化vue */
 new Vue({
   render: h => h(App),
   router,
-  store
+  store,
+  created(){
+    axios.get('site/account/islogin').then(res=>{
+      //console.log(res);
+      if(res.data.code == "nologin"){      
+        store.state.isLogin = false
+      }else{
+        store.state.isLogin = true
+      }
+  })
+  }
 }).$mount('#app')

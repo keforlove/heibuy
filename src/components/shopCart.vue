@@ -54,7 +54,7 @@
                                     <th width="104" align="left">金额(元)</th>
                                     <th width="54" align="center">操作</th>
                                 </tr>
-                                <tr>
+                                <tr v-show="goodsList.length == 0">
                                     <td colspan="10">
                                         <div class="msg-tips">
                                             <div class="icon warning">
@@ -68,12 +68,28 @@
                                         </div>
                                     </td>
                                 </tr>
+                                <tr v-show="goodsList.length != 0" v-for="(item, index) in goodsList" :key="item.id">
+                                    <td>
+                                        <el-switch v-model="item.selected" active-color="#13ce66" inactive-color="#ff4949">
+                                        </el-switch>
+                                    </td>
+                                    <td><img :src="item.img_url" alt=""></td>
+                                    <td>{{item.title}}</td>
+                                    <td>{{item.sell_price}}</td>
+                                    <td>
+                                        <el-input-number v-model="item.buycount" @change="changCount(item.id,item.buycount)" :min="0" label="描述文字"></el-input-number>
+                                    </td>
+                                    <td>{{item.sell_price*item.buycount}}</td>
+                                    <td>
+                                        <el-button @click="delOne(item.id)" type="danger" icon="el-icon-delete" circle></el-button>
+                                    </td>
+                                </tr>
                                 <tr>
                                     <th align="right" colspan="8">
                                         已选择商品
-                                        <b class="red" id="totalQuantity">0</b> 件 &nbsp;&nbsp;&nbsp; 商品总金额（不含运费）：
+                                        <b class="red" id="totalQuantity">{{totalCount}}</b> 件 &nbsp;&nbsp;&nbsp; 商品总金额（不含运费）：
                                         <span class="red">￥</span>
-                                        <b class="red" id="totalAmount">0</b>元
+                                        <b class="red" id="totalAmount">{{totalPrice}}</b>元
                                     </th>
                                 </tr>
                             </tbody>
@@ -84,7 +100,9 @@
                     <div class="cart-foot clearfix">
                         <div class="right-box">
                             <button class="button" onclick="javascript:location.href='/index.html';">继续购物</button>
-                            <button class="submit" onclick="formSubmit(this, '/', '/shopping.html');">立即结算</button>
+                            <router-link :to="'/order/'+checkIds">
+                            <button class="submit" >立即结算</button>
+                            </router-link>
                         </div>
                     </div>
                     <!--购物车底部-->
@@ -94,6 +112,112 @@
     </div>
 </template>
 <script>
+export default {
+  name: "shopCart",
+  data: function() {
+    return {
+      goodsList: [],
+    };
+  },
+  methods: {
+    changCount(id, newCount) {
+      this.$store.commit("updateCart", {
+        id,
+        newCount
+      });
+    },
+    delOne(id){
+        this.$confirm('此操作将永久删除该文件, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+            this.$store.commit('delOneById',id)
+            this.goodsList.forEach((v,index)=>{
+                if(v.id == id){
+                    this.goodsList.splice(index,1)
+                }
+            })
+          this.$message({  
+            type: 'success',
+            message: '删除成功!'
+          });
+        }).catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除'
+          });          
+        });
+    }
+  },
+  created() {
+    let ids = "";
+    for (let key in this.$store.state.cartData) {
+      ids += key;
+      ids += ",";
+    }
+    ids = ids.slice(0, -1);
+    //console.log(ids);
+    /* 发请求 */
+    this.$axios.get(`site/comment/getshopcargoods/${ids}`).then(res => {
+      //console.log(res);
+      this.goodsList = res.data.message;
+      res.data.message.forEach(v => {
+        v.buycount = this.$store.state.cartData[v.id];
+        this.$set(v,'selected',true)
+        //v.selected = true;
+      });
+    });
+  },
+  computed: {
+    totalCount() {
+      let num = 0;
+      this.goodsList.forEach(v => {
+        if (v.selected == true) {
+          num += v.buycount;
+        }
+      });
+      return num;
+    },
+    totalPrice() {
+      let price = 0;
+      this.goodsList.forEach(v => {
+        if (v.selected == true) {
+          price += v.buycount * v.sell_price;
+        }
+      });
+      return price;
+    },
+    checkIds(){
+        let ids = '';
+        this.goodsList.forEach(v=>{
+            //console.log(v)
+            ids += v.id;
+            ids += ','
+        })
+        ids = ids.slice(0,-1);
+        return ids
+        console.log(ids);
+    }
+  },
+  /* 深度侦听 */
+  /* watch: {
+      goodsList: {
+          handler: function (val, oldVal) {
+              console.log(val)
+              let obj = {}
+              val.forEach(v=>{
+                  obj[v.id] = v.buycount;
+              })
+              this.$store.commit('updateCart',obj)
+           },
+          deep: true
+      }
+  } */
+}; 
 </script>
 <style>
+td img {
+  width: 100px;
+}
 </style>

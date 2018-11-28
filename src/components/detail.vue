@@ -238,6 +238,12 @@ export default {
                 goodId:this.artID,
                 goodNum:this.buyCount
             })
+            this.$notify({
+            title: 'success',
+            message: '加入购物车成功',
+            type: 'success',
+            duration: 1000
+        });
         }
 
     },
