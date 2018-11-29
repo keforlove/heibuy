@@ -192,8 +192,10 @@ export default {
         let ids = '';
         this.goodsList.forEach(v=>{
             //console.log(v)
-            ids += v.id;
-            ids += ','
+            if(v.selected == true){
+                ids += v.id;
+                ids += ','
+            }   
         })
         ids = ids.slice(0,-1);
         return ids

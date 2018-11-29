@@ -36,14 +36,20 @@ import detail from './components/detail.vue';
 import shopCart from './components/shopCart.vue';
 import order from './components/order.vue';
 import login from './components/login.vue';
+import payMoney from './components/payMoney.vue';
+import paySuccess from './components/paySuccess.vue';
+import vipCenter from './components/vipCenter.vue';
 
 let routes = [
   {path: '/', redirect:'/index'},
   {path: '/index',component:index},
   {path: '/detail/:id',component:detail},
   {path: '/shopCart',component:shopCart},
-  {path: '/order/:ids',component:order},
-  {path: '/login/',component:login}
+  {path: '/order/:ids',component:order,meta: { checkLogin: true }},
+  {path: '/login/',component:login},
+  {path: '/payMoney/:orderid',component:payMoney,meta: { checkLogin: true }},
+  {path: '/paySuccess',component:paySuccess,meta: { checkLogin: true }},
+  {path: '/vipCenter',component:vipCenter}
 ]
 
 /* 实例化router */
@@ -116,7 +122,8 @@ const store = new Vuex.Store({
 /* 导航守卫 */
 router.beforeEach((to, from, next) => {
   //console.log('触发了');
-  if(to.path.indexOf('/order') != -1 ){
+  //if(to.path.indexOf('/order') != -1 )
+  if(to.meta.checkLogin == true){
     axios.get('site/account/islogin').then(res=>{
       //console.log(res);
       if(res.data.code == "nologin"){

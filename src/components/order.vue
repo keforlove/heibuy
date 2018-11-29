@@ -70,9 +70,8 @@
                                     <!--取得一个DataTable-->
                                     <li>
                                         <label>
-                                            <input name="payment_id" type="radio" onclick="paymentAmountTotal(this);" value="1">
-                                            <input name="payment_price" type="hidden" value="0.00">在线支付
-                                            <em>手续费：0.00元</em>
+                                            <el-radio v-model="ruleForm.payment_id" label="6">支付方式</el-radio>
+                                            &nbsp&nbsp<em>手续费：0.00元</em>
                                         </label>
                                     </li>
                                 </ul>
@@ -83,10 +82,9 @@
                                     <!--取得一个DataTable-->
                                     <li>
                                         <label>
-                                            <input name="express_id" type="radio" onclick="freightAmountTotal(this);" value="1" datatype="*" sucmsg=" ">
-                                            <input name="express_price" type="hidden" value="20.00">顺丰快递
-                                            <em>费用：20.00元</em>
-                                            <span class="Validform_checktip"></span>
+                                            <el-radio v-model="ruleForm.express_id" label="1" @change="ruleForm.expressMoment=24">顺丰</el-radio>&nbsp&nbsp<em>运费：24元</em>&nbsp&nbsp
+                                            <el-radio v-model="ruleForm.express_id" label="2" @change="ruleForm.expressMoment=15">圆通</el-radio>&nbsp&nbsp<em>运费：15元</em>&nbsp&nbsp
+                                            <el-radio v-model="ruleForm.express_id" label="3" @change="ruleForm.expressMoment=8">韵达</el-radio>&nbsp&nbsp<em>运费：8元</em>
                                         </label>
                                     </li>
                                 </ul>
@@ -134,7 +132,7 @@
                                         <dl>
                                             <dt>订单备注(100字符以内)</dt>
                                             <dd>
-                                                <textarea name="message" class="input" style="height:35px;"></textarea>
+                                                <textarea v-model="ruleForm.message" name="message" class="input" style="height:35px;"></textarea>
                                             </dd>
                                         </dl>
                                     </div>
@@ -146,15 +144,15 @@
                                         </p>
                                         <p>
                                             运费：￥
-                                            <label id="expressFee" class="price">0.00</label> 元
+                                            <label id="expressFee" class="price">{{ruleForm.expressMoment}}</label> 元
                                         </p>
                                         <p class="txt-box">
                                             应付总金额：￥
-                                            <label id="totalAmount" class="price">2299.00</label>
+                                            <label id="totalAmount" class="price">{{totalPrice + ruleForm.expressMoment}}</label>
                                         </p>
                                         <p class="btn-box">
-                                            <a class="btn button" href="/cart.html">返回购物车</a>
-                                            <a id="btnSubmit" class="btn submit">确认提交</a>
+                                            <router-link to="/shopCart">返回购物车</router-link>
+                                            <a id="btnSubmit" class="btn submit" @click="submitForm('ruleForm')">确认提交</a>
                                         </p>
                                     </div>
                                 </div>
@@ -218,15 +216,15 @@ export default {
       totalPrice: 0,
       ruleForm: {
         /* 收货人姓名 */
-        accept_name: "",
+        accept_name: "放屁张",
         /* 收货地址 */
-        address: "",
+        address: "大桥旁边的一个公共厕所",
         /* 手机号码 */
-        mobile: "",
+        mobile: "18888886666",
         /* 电子邮箱 */
-        email: "",
+        email: "fangpizhang@qq.com",
         /* 邮编 */
-        post_code: "",
+        post_code: "888888",
         /* 地区 */
         area: {
             province: {
@@ -242,6 +240,14 @@ export default {
                 value: "阳新县"
             }
         },
+        /* 支付方式 */
+        payment_id: "6",
+        /* 快递 */
+        express_id: "1",
+        /* 运费 */
+        expressMoment: 24,
+        /* 备注 */
+        message: "请勿随地放屁!",
       },
       rules: {
         /* 收货人姓名 */
@@ -271,8 +277,39 @@ export default {
   },
   methods: {
       selectedArea(area){
-          this.ruleForm.area = area
-      }
+          this.ruleForm.area = area;
+      },
+      submitForm(formName) {
+          /* 表单验证 */
+        this.$refs[formName].validate((valid) => {
+          if (valid) {
+            /* 验证通过 发请求提交订单*/
+            this.ruleForm.goodsAmount = this.totalPrice;
+            this.ruleForm.goodsids = this.ids;
+            let obj = {}
+            this.goodsList.forEach(v=>{
+                obj[v.id] = v.buycount
+            })
+            this.ruleForm.cargoodsobj = obj
+            //console.log(this.$store.state.cartData)
+            //console.log(this.ruleForm)
+            this.$axios.post('site/validate/order/setorder',this.ruleForm)
+            .then(res=>{
+                //console.log(res)
+                this.$Message.success('数据提交成功')
+                this.$router.push('/payMoney/'+res.data.message.orderid)
+                /* 删除选中的商品 */
+                this.goodsList.forEach(v=>{
+                    this.$store.commit('delOneById',v.id)
+                })
+            })
+          } else {
+            /* 验证未通过 */
+            this.$Message.warning('数据提交不完整')
+            return false;
+          }
+        });
+      },
   },
   created() {
     //console.log(this.$route);
@@ -286,9 +323,9 @@ export default {
         res.data.message.forEach(v => {
           v.buycount = this.$store.state.cartData[v.id];
           this.totalCount += v.buycount;
-          this.totalPrice += v.sell_price;
+          this.totalPrice += (v.sell_price*v.buycount);
         });
-        console.log(this.goodsList);
+        //console.log(this.goodsList);
       });
   }
 };
